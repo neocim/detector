@@ -1,34 +1,40 @@
 import logging
 import re
+from io import BytesIO
 
 import cv2
+import numpy
 from PIL import Image
 from pyzbar.pyzbar import decode
 from surya.detection import DetectionPredictor
 from surya.foundation import FoundationPredictor
 from surya.recognition import RecognitionPredictor
 
+ORDER_PATTERN = r"\d{8}-\d{4}-\d"
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-ORDER_PATTERN = r"\d{8}-\d{4}-\d"
+foundation = FoundationPredictor()
+recognition = RecognitionPredictor(foundation)
+detection = DetectionPredictor()
 
 
-def scan_barcodes(image_path: str):
-    img = cv2.imread(image_path)
+def scan_barcodes(image_bytes: bytes):
+    nparr = numpy.frombuffer(image_bytes, numpy.uint8)
+    image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
-    if img is None:
-        logger.error(f"Can not open image `{image_path}`")
+    if image is None:
+        logger.error("Can not open image")
         return []
 
     results = []
-
-    for barcode in decode(img):
+    for barcode in decode(image):
         data = barcode.data.decode("utf-8")
         results.append(data)
 
     detector = cv2.QRCodeDetector()
-    data, _, _ = detector.detectAndDecode(img)
+    data, _, _ = detector.detectAndDecode(image)
 
     if data not in results:
         results.append(data)
@@ -36,12 +42,8 @@ def scan_barcodes(image_path: str):
     return results
 
 
-def extract_order_number(image_path: str):
-    image = Image.open(image_path)
-
-    foundation = FoundationPredictor()
-    recognition = RecognitionPredictor(foundation)
-    detection = DetectionPredictor()
+def extract_order_number(image_bytes: bytes):
+    image = Image.open(BytesIO(image_bytes))
 
     predictions = recognition([image], det_predictor=detection)
 
@@ -49,11 +51,6 @@ def extract_order_number(image_path: str):
     for line in predictions[0].text_lines:
         all_text.append(line.text)
 
-    full_text = "\n".join(all_text)
+    print(all_text)
 
-    logger.info("RAW OCR:")
-    logger.info(full_text)
-
-    orders = re.findall(ORDER_PATTERN, full_text)
-
-    return orders
+    return re.findall(ORDER_PATTERN, "\n".join(all_text))
