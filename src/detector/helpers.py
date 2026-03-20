@@ -51,6 +51,4 @@ def extract_order_number(image_bytes: bytes):
     for line in predictions[0].text_lines:
         all_text.append(line.text)
 
-    print(all_text)
-
     return re.findall(ORDER_PATTERN, "\n".join(all_text))
