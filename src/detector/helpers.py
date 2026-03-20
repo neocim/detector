@@ -52,3 +52,9 @@ def extract_order_number(image_bytes: bytes):
         all_text.append(line.text)
 
     return re.findall(ORDER_PATTERN, "\n".join(all_text))
+
+
+async def process_photo(image_bytes: bytes) -> tuple[list[str], list[str]]:
+    barcodes = scan_barcodes(image_bytes)
+    orders = extract_order_number(image_bytes)
+    return barcodes, orders
