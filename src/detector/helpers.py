@@ -10,7 +10,7 @@ from surya.detection import DetectionPredictor
 from surya.foundation import FoundationPredictor
 from surya.recognition import RecognitionPredictor
 
-ORDER_PATTERN = r"\d{8}-\d{4}-\d"
+ORDER_PATTERN = r"\d+-\d{4}-\d"
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ def scan_barcodes(image_bytes: bytes):
         return []
 
     results = []
+
     for barcode in decode(image):
         data = barcode.data.decode("utf-8")
         results.append(data)
@@ -35,8 +36,10 @@ def scan_barcodes(image_bytes: bytes):
     detector = cv2.QRCodeDetector()
     data, _, _ = detector.detectAndDecode(image)
 
-    if data not in results:
+    if data and data not in results:
         results.append(data)
+
+    results = [r for r in results if r]
 
     return results
 

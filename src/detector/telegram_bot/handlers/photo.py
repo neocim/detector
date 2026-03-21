@@ -34,18 +34,16 @@ async def handle_photos(message: Message, bot: Bot, table: FromDishka[Spreadshee
         )
 
         results = []
-        rows = []
         for i, (photo, photo_msg) in enumerate(group, 1):
             barcodes, orders = await process_photo(await get_file_bytes(bot, photo.file_id))
 
             results.append((barcodes, orders))
-            rows.extend(_sheet_rows(photo_msg, barcodes, orders))
+            await _append_rows(table, _sheet_rows(photo_msg, barcodes, orders))
 
             await progress_msg.edit_text(
                 _album_text(i, total, results),
                 parse_mode=ParseMode.HTML,
             )
-        await _append_rows(table, rows)
 
         await progress_msg.edit_text(
             _album_text(total, total, results, finished=True),
@@ -130,6 +128,9 @@ def _sheet_rows(message: Message, barcodes: list[str], orders: list[str]) -> lis
 
     rows = []
     for order, barcode in zip_longest(orders, barcodes):
+        if not order and not barcode:
+            continue
+
         rows.append([processed_at, username, order or "", barcode or "", link])
 
     return rows
