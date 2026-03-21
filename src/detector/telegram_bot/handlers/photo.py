@@ -27,6 +27,7 @@ async def handle_photos(message: Message, bot: Bot, table: FromDishka[Spreadshee
 
         group = photo_album.pop(message.media_group_id, [])
         total = len(group)
+
         progress_msg = await message.answer(
             _progress_text(0, total),
             parse_mode=ParseMode.HTML,
@@ -52,13 +53,11 @@ async def handle_photos(message: Message, bot: Bot, table: FromDishka[Spreadshee
         )
         return
 
-    file_bytes = await get_file_bytes(bot, message.photo[-1].file_id)  # type: ignore
     progress_msg = await message.answer(
         _progress_text(0, 1),
         parse_mode=ParseMode.HTML,
     )
-
-    barcodes, orders = await process_photo(file_bytes)
+    barcodes, orders = await process_photo(await get_file_bytes(bot, message.photo[-1].file_id))  # type: ignore
     await _append_rows(table, _sheet_rows(message, barcodes, orders))
 
     await progress_msg.edit_text(
@@ -115,13 +114,20 @@ def _message_link(message: Message) -> str:
 
 def _sheet_rows(message: Message, barcodes: list[str], orders: list[str]) -> list[list[str]]:
     processed_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    username = f"@{message.from_user.username}" if message.from_user and message.from_user.username else ""
 
-    if not username and message.from_user:
+    username = ""
+    if message.from_user and message.from_user.username:
+        username = f"@{message.from_user.username}"
+    elif message.sender_chat and message.sender_chat.username:
+        username = f"@{message.sender_chat.username}"
+    elif message.from_user:
         username = f"id:{message.from_user.id}"
+    elif message.sender_chat:
+        username = f"id:{message.sender_chat.id}"
+
     link = _message_link(message)
 
-    rows: list[list[str]] = []
+    rows = []
     for order, barcode in zip_longest(orders, barcodes):
         rows.append([processed_at, username, order or "", barcode or "", link])
 
@@ -132,8 +138,7 @@ async def _append_rows(table: Spreadsheet, rows: list[list[str]]) -> None:
     if not rows:
         return
 
-    sheet = table.sheet1
-    await asyncio.to_thread(sheet.append_rows, rows)
+    await asyncio.to_thread(table.sheet1.append_rows, rows)
 
 
 async def get_file_bytes(bot: Bot, file_id: str) -> bytes:
