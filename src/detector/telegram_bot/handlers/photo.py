@@ -34,7 +34,7 @@ async def handle_photos(message: Message, bot: Bot, table: FromDishka[Spreadshee
         )
 
         results = []
-        rows: list[list[str]] = []
+        rows = []
         for i, (photo, photo_msg) in enumerate(group, 1):
             barcodes, orders = await process_photo(await get_file_bytes(bot, photo.file_id))
 
@@ -57,6 +57,7 @@ async def handle_photos(message: Message, bot: Bot, table: FromDishka[Spreadshee
         _progress_text(0, 1),
         parse_mode=ParseMode.HTML,
     )
+
     barcodes, orders = await process_photo(await get_file_bytes(bot, message.photo[-1].file_id))  # type: ignore
     await _append_rows(table, _sheet_rows(message, barcodes, orders))
 
