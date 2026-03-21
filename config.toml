@@ -2,5 +2,6 @@
 token = "8623693581:AAFZVftiYreghZ6kxhMvRjeFXfUhQmXrKnE"
 
 [google]
-json_key_path = "test-task-490811-0a569c5d5f33.json"
+# Create an API key from https://console.cloud.google.com/apis/credentials
+json_key_path = "google_key.json"
 table_key = "1M0Ea_tHDBWInpkvks1sQPjdDAdMG-aL89ZE28xe5Vls"
