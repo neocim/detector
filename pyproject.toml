@@ -12,6 +12,7 @@ dependencies = [
     "adaptix>=3.0.0b11",
     "aiogram>=3.26.0",
     "dishka>=1.9.1",
+    "gspread>=6.2.1",
     "opencv-python>=4.13.0.92",
     "pillow>=10.4.0",
     "pyzbar>=0.1.9",

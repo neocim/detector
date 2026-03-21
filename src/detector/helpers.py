@@ -12,7 +12,6 @@ from surya.recognition import RecognitionPredictor
 
 ORDER_PATTERN = r"\d{8}-\d{4}-\d"
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 foundation = FoundationPredictor()

@@ -14,7 +14,8 @@ class BotConfig:
 
 @dataclass(slots=True, kw_only=True)
 class GoogleConfig:
-    api_key: str
+    json_key_path: str
+    table_key: str
 
 
 @dataclass(slots=True, kw_only=True)
@@ -24,4 +25,5 @@ class Config:
 
 
 def load_config(path: str) -> Config:
-    return retort.load(toml_rs.loads(Path(path).read_text(), toml_version="1.1.0"), Config)
+    config = retort.load(toml_rs.loads(Path(path).read_text(), toml_version="1.1.0"), Config)
+    return config

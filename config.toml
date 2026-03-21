@@ -2,4 +2,5 @@
 token = "8623693581:AAFZVftiYreghZ6kxhMvRjeFXfUhQmXrKnE"
 
 [google]
-api_key = ""
+json_key_path = "test-task-490811-0a569c5d5f33.json"
+table_key = "1M0Ea_tHDBWInpkvks1sQPjdDAdMG-aL89ZE28xe5Vls"
