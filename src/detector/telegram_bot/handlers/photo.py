@@ -1,24 +1,28 @@
 import asyncio
 from collections import defaultdict
+from datetime import datetime
+from itertools import zip_longest
 from typing import DefaultDict, List, Tuple
 
 from aiogram import Bot, Router
 from aiogram.enums import ParseMode
 from aiogram.types import Message, PhotoSize
+from dishka import FromDishka
+from gspread import Spreadsheet
 
 from detector.helpers import process_photo
 
 photo_router = Router()
-photo_album: DefaultDict[str, List[PhotoSize]] = defaultdict(list)
+photo_album: DefaultDict[str, List[Tuple[PhotoSize, Message]]] = defaultdict(list)
 
 
 @photo_router.message(lambda m: m.photo)
-async def handle_photos(message: Message, bot: Bot) -> None:
+async def handle_photos(message: Message, bot: Bot, table: FromDishka[Spreadsheet]) -> None:
     if message.media_group_id:
-        photo_album[message.media_group_id].append(message.photo[-1])  # type: ignore
+        photo_album[message.media_group_id].append((message.photo[-1], message))  # type: ignore
 
         await asyncio.sleep(0.2)
-        if photo_album[message.media_group_id][-1] is not message.photo[-1]:  # type: ignore
+        if photo_album[message.media_group_id][-1][0] is not message.photo[-1]:  # type: ignore
             return
 
         group = photo_album.pop(message.media_group_id, [])
@@ -29,13 +33,18 @@ async def handle_photos(message: Message, bot: Bot) -> None:
         )
 
         results = []
-        for i, photo in enumerate(group, 1):
+        rows: list[list[str]] = []
+        for i, (photo, photo_msg) in enumerate(group, 1):
             barcodes, orders = await process_photo(await get_file_bytes(bot, photo.file_id))
+
             results.append((barcodes, orders))
+            rows.extend(_sheet_rows(photo_msg, barcodes, orders))
+
             await progress_msg.edit_text(
                 _album_text(i, total, results),
                 parse_mode=ParseMode.HTML,
             )
+        await _append_rows(table, rows)
 
         await progress_msg.edit_text(
             _album_text(total, total, results, finished=True),
@@ -48,7 +57,10 @@ async def handle_photos(message: Message, bot: Bot) -> None:
         _progress_text(0, 1),
         parse_mode=ParseMode.HTML,
     )
+
     barcodes, orders = await process_photo(file_bytes)
+    await _append_rows(table, _sheet_rows(message, barcodes, orders))
+
     await progress_msg.edit_text(
         _album_text(1, 1, [(barcodes, orders)], finished=True),
         parse_mode=ParseMode.HTML,
@@ -83,6 +95,45 @@ def _album_text(done: int, total: int, results: list[Tuple[list[str], list[str]]
         lines.append(f"Фото {idx}:")
         lines.append(_result_text(barcodes, orders))
     return "\n".join(lines)
+
+
+def _message_link(message: Message) -> str:
+    if message.chat.username:
+        return f"https://t.me/{message.chat.username}/{message.message_id}"
+
+    chat_id = message.chat.id
+    if chat_id < 0:
+        chat_id_str = str(chat_id)
+        if chat_id_str.startswith("-100"):
+            chat_id_str = chat_id_str[4:]
+        else:
+            chat_id_str = chat_id_str[1:]
+        return f"https://t.me/c/{chat_id_str}/{message.message_id}"
+
+    return ""
+
+
+def _sheet_rows(message: Message, barcodes: list[str], orders: list[str]) -> list[list[str]]:
+    processed_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    username = f"@{message.from_user.username}" if message.from_user and message.from_user.username else ""
+
+    if not username and message.from_user:
+        username = f"id:{message.from_user.id}"
+    link = _message_link(message)
+
+    rows: list[list[str]] = []
+    for order, barcode in zip_longest(orders, barcodes):
+        rows.append([processed_at, username, order or "", barcode or "", link])
+
+    return rows
+
+
+async def _append_rows(table: Spreadsheet, rows: list[list[str]]) -> None:
+    if not rows:
+        return
+
+    sheet = table.sheet1
+    await asyncio.to_thread(sheet.append_rows, rows)
 
 
 async def get_file_bytes(bot: Bot, file_id: str) -> bytes:
