@@ -21,7 +21,7 @@ async def handle_photos(message: Message, bot: Bot, table: FromDishka[Spreadshee
     if message.media_group_id:
         photo_album[message.media_group_id].append((message.photo[-1], message))  # type: ignore
 
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(0.5)
         if photo_album[message.media_group_id][-1][0] is not message.photo[-1]:  # type: ignore
             return
 
